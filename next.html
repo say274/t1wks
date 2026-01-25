@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Next Week</title>
+  <style>
+    html, body { margin: 0; height: 100%; background: transparent; }
+    img { width: 100vw; height: 100vh; object-fit: contain; display: block; }
+  </style>
+</head>
+<body>
+  <img id="img" alt="Next week" />
+
+<script>
+  const TIMEZONE = "Australia/Sydney";
+  const WEEK1_START = { y: 2026, m: 1, d: 26 }; // Monday Week 1
+  const MAX_WEEKS = 10;
+  const LOOP_WEEKS = true;
+  const IMG_PATH = (week) => `images/wd${week}.png`;
+
+  function tzParts(date, timeZone) {
+    const dtf = new Intl.DateTimeFormat("en-CA", {
+      timeZone, year: "numeric", month: "2-digit", day: "2-digit"
+    });
+    const parts = dtf.formatToParts(date);
+    const obj = {};
+    for (const p of parts) if (p.type !== "literal") obj[p.type] = p.value;
+    return { y: +obj.year, m: +obj.month, d: +obj.day };
+  }
+
+  function sydneyMidnightUTC(y, m, d) {
+    return Date.UTC(y, m - 1, d, 0, 0, 0);
+  }
+
+  function getWeekSydney() {
+    const url = new URL(window.location.href);
+    const override = url.searchParams.get("week");
+    if (override) return Number(override);
+
+    const now = new Date();
+    const today = tzParts(now, TIMEZONE);
+
+    const startUTC = sydneyMidnightUTC(WEEK1_START.y, WEEK1_START.m, WEEK1_START.d);
+    const todayUTC = sydneyMidnightUTC(today.y, today.m, today.d);
+
+    const days = Math.floor((todayUTC - startUTC) / 86400000);
+    return Math.floor(days / 7) + 1;
+  }
+
+  function wrapWeek(n) {
+    if (!LOOP_WEEKS) return Math.min(Math.max(n, 1), MAX_WEEKS);
+    return ((n - 1) % MAX_WEEKS + MAX_WEEKS) % MAX_WEEKS + 1;
+  }
+
+  const thisWeek = wrapWeek(getWeekSydney());
+  const nextWeek = wrapWeek(thisWeek + 1);
+
+  const bust = new Date().toISOString().slice(0, 10);
+  document.getElementById("img").src = `${IMG_PATH(nextWeek)}?v=${bust}`;
+</script>
+</body>
+</html>
