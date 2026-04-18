@@ -21,31 +21,21 @@
 
   function tzParts(date, timeZone) {
     const dtf = new Intl.DateTimeFormat("en-CA", {
-      timeZone, year: "numeric", month: "2-digit", day: "2-digit"
+      timeZone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit"
     });
     const parts = dtf.formatToParts(date);
     const obj = {};
-    for (const p of parts) if (p.type !== "literal") obj[p.type] = p.value;
+    for (const p of parts) {
+      if (p.type !== "literal") obj[p.type] = p.value;
+    }
     return { y: +obj.year, m: +obj.month, d: +obj.day };
   }
 
-  function sydneyMidnightUTC(y, m, d) {
-    return Date.UTC(y, m - 1, d, 0, 0, 0);
-  }
-
-  function getWeekSydney() {
-    const url = new URL(window.location.href);
-    const override = url.searchParams.get("week");
-    if (override) return Number(override);
-
-    const now = new Date();
-    const today = tzParts(now, TIMEZONE);
-
-    const startUTC = sydneyMidnightUTC(WEEK1_START.y, WEEK1_START.m, WEEK1_START.d);
-    const todayUTC = sydneyMidnightUTC(today.y, today.m, today.d);
-
-    const days = Math.floor((todayUTC - startUTC) / 86400000);
-    return Math.floor(days / 7) + 1;
+  function dayNumber(y, m, d) {
+    return Math.floor(Date.UTC(y, m - 1, d) / 86400000);
   }
 
   function wrapWeek(n) {
@@ -53,11 +43,21 @@
     return ((n - 1) % MAX_WEEKS + MAX_WEEKS) % MAX_WEEKS + 1;
   }
 
-  const thisWeek = wrapWeek(getWeekSydney());
-  const nextWeek = wrapWeek(thisWeek + 1);
+  function getCurrentSydneyWeek() {
+    const today = tzParts(new Date(), TIMEZONE);
 
-  const bust = new Date().toISOString().slice(0, 10);
-  document.getElementById("img").src = `${IMG_PATH(nextWeek)}?v=${bust}`;
+    const startDay = dayNumber(WEEK1_START.y, WEEK1_START.m, WEEK1_START.d);
+    const todayDay = dayNumber(today.y, today.m, today.d);
+
+    const days = todayDay - startDay;
+    const rawWeek = Math.floor(days / 7) + 1;
+
+    return Math.max(1, rawWeek);
+  }
+
+  const nextWeek = wrapWeek(getCurrentSydneyWeek() + 1);
+
+  document.getElementById("img").src = `${IMG_PATH(nextWeek)}?v=${Date.now()}`;
 </script>
 </body>
 </html>

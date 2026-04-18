@@ -3,92 +3,61 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Weekly Image</title>
+  <title>Next Week</title>
   <style>
     html, body { margin: 0; height: 100%; background: transparent; }
-    body { display: grid; place-items: center; }
     img { width: 100vw; height: 100vh; object-fit: contain; display: block; }
   </style>
 </head>
 <body>
-  <img id="weekly" alt="Weekly image" />
+  <img id="img" alt="Next week" />
 
-  <script>
-    // ====== SETTINGS ======
-    const TIMEZONE = "Australia/Sydney";
+<script>
+  const TIMEZONE = "Australia/Sydney";
+  const WEEK1_START = { y: 2026, m: 4, d: 20 }; // Monday Week 1
+  const MAX_WEEKS = 10;
+  const LOOP_WEEKS = true;
+  const IMG_PATH = (week) => `images/wd${week}.png`;
 
-    // Week 1 starts Monday 2026-01-26 in Sydney
-    const WEEK1_START = { y: 2026, m: 4, d: 20 }; // m is 1-12
+  function tzParts(date, timeZone) {
+    const dtf = new Intl.DateTimeFormat("en-CA", {
+      timeZone, year: "numeric", month: "2-digit", day: "2-digit"
+    });
+    const parts = dtf.formatToParts(date);
+    const obj = {};
+    for (const p of parts) if (p.type !== "literal") obj[p.type] = p.value;
+    return { y: +obj.year, m: +obj.month, d: +obj.day };
+  }
 
-    // How many week images you have (wd1..wdN)
-    const MAX_WEEKS = 20;
+  function sydneyMidnightUTC(y, m, d) {
+    return Date.UTC(y, m - 1, d, 0, 0, 0);
+  }
 
-    // Image filename pattern
-    const IMG_PATH = (weekNum) => `images/wd${weekNum}.png`;
+  function getWeekSydney() {
+    const url = new URL(window.location.href);
+    const override = url.searchParams.get("week");
+    if (override) return Number(override);
 
-    // If you want it to loop after MAX_WEEKS, set true
-    const LOOP_WEEKS = true;
+    const now = new Date();
+    const today = tzParts(now, TIMEZONE);
 
-    // ======================
+    const startUTC = sydneyMidnightUTC(WEEK1_START.y, WEEK1_START.m, WEEK1_START.d);
+    const todayUTC = sydneyMidnightUTC(today.y, today.m, today.d);
 
-    function tzParts(date, timeZone) {
-      const dtf = new Intl.DateTimeFormat("en-CA", {
-        timeZone,
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-      });
-      const parts = dtf.formatToParts(date);
-      const obj = {};
-      for (const p of parts) if (p.type !== "literal") obj[p.type] = p.value;
-      return {
-        y: Number(obj.year),
-        m: Number(obj.month),
-        d: Number(obj.day),
-      };
-    }
+    const days = Math.floor((todayUTC - startUTC) / 86400000);
+    return Math.floor(days / 7) + 1;
+  }
 
-    // Convert a "date in Sydney" into a UTC timestamp at Sydney midnight.
-    // We only care about whole-day/week math, so this stays stable.
-    function sydneyMidnightUTC(y, m, d) {
-      return Date.UTC(y, m - 1, d, 0, 0, 0);
-    }
+  function wrapWeek(n) {
+    if (!LOOP_WEEKS) return Math.min(Math.max(n, 1), MAX_WEEKS);
+    return ((n - 1) % MAX_WEEKS + MAX_WEEKS) % MAX_WEEKS + 1;
+  }
 
-    function getWeekNumberSydney() {
-      // Manual override for testing: ?week=3
-      const url = new URL(window.location.href);
-      const override = url.searchParams.get("week");
-      if (override && !Number.isNaN(Number(override))) return Number(override);
+  const thisWeek = wrapWeek(getWeekSydney());
+  const nextWeek = wrapWeek(thisWeek + 1);
 
-      const now = new Date();
-      const todaySydney = tzParts(now, TIMEZONE);
-
-      const startUTC = sydneyMidnightUTC(WEEK1_START.y, WEEK1_START.m, WEEK1_START.d);
-      const todayUTC = sydneyMidnightUTC(todaySydney.y, todaySydney.m, todaySydney.d);
-
-      const msPerDay = 24 * 60 * 60 * 1000;
-      const daysSinceStart = Math.floor((todayUTC - startUTC) / msPerDay);
-
-      // Week 1 for days 0..6, week 2 for 7..13, etc.
-      return Math.floor(daysSinceStart / 7) + 1;
-    }
-
-    function clampOrLoopWeek(n) {
-      if (LOOP_WEEKS) {
-        // loop 1..MAX_WEEKS
-        const wrapped = ((n - 1) % MAX_WEEKS + MAX_WEEKS) % MAX_WEEKS + 1;
-        return wrapped;
-      }
-      // clamp 1..MAX_WEEKS
-      return Math.min(Math.max(n, 1), MAX_WEEKS);
-    }
-
-    const weekNum = clampOrLoopWeek(getWeekNumberSydney());
-    const img = document.getElementById("weekly");
-
-    // Cache-bust daily so DAKboard doesn’t cling to the old one
-    const cacheBuster = new Date().toISOString().slice(0, 10);
-    img.src = `${IMG_PATH(weekNum)}?v=${cacheBuster}`;
-  </script>
+  const bust = new Date().toISOString().slice(0, 10);
+  document.getElementById("img").src = `${IMG_PATH(nextWeek)}?v=${bust}`;
+</script>
 </body>
 </html>
